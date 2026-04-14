@@ -1,0 +1,269 @@
+plugins {
+    id "jacoco"
+    id "com.adarshr.test-logger" version "4.0.0"
+    id "org.gradle.test-retry" version "1.6.4"
+    id "com.github.nbaztec.coveralls-jacoco" version "1.2.20"
+}
+
+configurations {
+    palantirJavaFormat
+}
+
+dependencies {
+    palantirJavaFormat "com.palantir.javaformat:palantir-java-format:2.69.0"
+}
+
+allprojects {
+    apply plugin: "idea"
+    apply plugin: "java-library"
+    apply plugin: "jacoco"
+    apply plugin: "com.adarshr.test-logger"
+    apply plugin: "org.gradle.test-retry"
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    repositories {
+        mavenCentral()
+        mavenLocal()
+    }
+
+    configurations {
+        all {
+            resolutionStrategy {
+                force "io.netty:netty-common:4.1.118.Final"
+                force "io.netty:netty-buffer:4.1.118.Final"
+                force "io.netty:netty-transport:4.1.118.Final"
+                force "io.netty:netty-handler:4.1.118.Final"
+                force "io.netty:netty-codec:4.1.118.Final"
+                force "io.netty:netty-resolver:4.1.118.Final"
+                force "io.netty:netty-transport-native-unix-common:4.1.118.Final"
+                force "io.netty:netty-resolver-dns:4.1.118.Final"
+                force "io.netty:netty-codec-dns:4.1.118.Final"
+            }
+        }
+    }
+}
+
+ext {
+    springBootVersion = "4.0.1"
+    springVersion = "7.0.3"
+    springDataVersion = "4.0.2"
+    microMeterVersion = "1.16.2"
+
+    // logging dependencies
+    lombokVersion = "1.18.42"
+    logbackVersion = "1.5.25"
+    sl4jVersion = "2.0.17"
+
+    // testing
+    jupiterVersion = "5.5.0"
+    mockitoVersion = "3.5.0"
+    hamcrestVersion = "2.2"
+    jacocoVersion = "0.8.12"
+    embeddedRedisVersion = "1.4.3"
+    h2Version = "2.1.214"
+    tomcatVersion = "10.1.4"
+
+    // utility
+    lang3Version = "3.20.0"
+    jacksonVersion = "3.0.3"
+    jacksonAnnotationsVersion = "2.21"
+
+    // server
+    jakartaServletVersion = "6.1.0"
+    pebbleVersion = "4.1.0"
+
+    // database
+    lettuceVersion = "7.2.1.RELEASE"
+    jakartaAnnotationVersion = "3.0.0"
+    jakartaPersistenceVersion = "3.2.0"
+    hibernateCoreVersion = "7.2.1.Final"
+
+    // other dependencies
+    jakartaValidationApiVersion = "3.1.1"
+    serucoEncodingVersion = "0.1.3"
+    apacheCommonCollectionVerion = "4.5.0"
+    hibernateValidatorVersion = "9.1.0.Final"
+    springDepManagementVersion = "1.1.7"
+    projectReactorReactorTestVersion = "3.8.2"
+    aspectjVersion = "1.9.25.1"
+    guavaVersion = "33.5.0-jre"
+}
+
+
+subprojects {
+    group = "com.github.sonus21"
+    version = "4.0.0-RC2"
+
+    dependencies {
+        // https://mvnrepository.com/artifact/org.springframework/spring-messaging
+        api "org.springframework:spring-messaging:${springVersion}"
+        // https://mvnrepository.com/artifact/org.springframework.data/spring-data-redis
+        api "org.springframework.data:spring-data-redis:${springDataVersion}"
+
+        // https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
+        implementation "org.apache.commons:commons-lang3:${lang3Version}"
+
+        // https://mvnrepository.com/artifact/com.google.guava/guava
+        implementation "com.google.guava:guava:${guavaVersion}"
+
+        compileOnly "org.projectlombok:lombok:${lombokVersion}"
+        annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+        testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+        testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+        // https://mvnrepository.com/artifact/ch.qos.logback/logback-core
+        testImplementation "ch.qos.logback:logback-core:${logbackVersion}"
+        // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+        testImplementation "ch.qos.logback:logback-classic:${logbackVersion}"
+        testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${jupiterVersion}"
+        testRuntimeOnly "org.junit.platform:junit-platform-launcher:6.0.2"
+        testImplementation "org.junit.jupiter:junit-jupiter-api:${jupiterVersion}"
+        testImplementation "org.junit.jupiter:junit-jupiter-params:${jupiterVersion}"
+        // https://mvnrepository.com/artifact/org.mockito/mockito-inline
+        testImplementation "org.mockito:mockito-inline:${mockitoVersion}"
+        testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+        // https://mvnrepository.com/artifact/org.hamcrest/hamcrest
+        testImplementation "org.hamcrest:hamcrest:${hamcrestVersion}"
+        testImplementation "org.springframework.boot:spring-boot-test:${springBootVersion}"
+        testImplementation "org.junit-pioneer:junit-pioneer:0.9.0"
+
+        configurations {
+            all*.exclude module: "spring-boot-starter-logging"
+            all*.exclude module: "junit"
+        }
+    }
+}
+
+def publishedProjects = subprojects.findAll({ subproject ->
+    subproject.pluginManager.hasPlugin("java") && !subproject.name.endsWith("example") && !subproject.name.contains("test")
+})
+
+def coverageExcludes = [
+        "com/github/sonus21/rqueue/exception",
+        "com/github/sonus21/rqueue/models/response",
+        "com/github/sonus21/rqueue/core/RqueueMessageSender*",
+        "com/github/sonus21/rqueue/utils/PrefixLogger*",
+        "com/github/sonus21/rqueue/utils/StackTraceUtil*",
+        "com/github/sonus21/rqueue/core/ScheduledTaskDetail*",
+]
+
+def filteredCoverageClassDirectories = providers.provider {
+    files(publishedProjects.collect { subproject ->
+        subproject.sourceSets.main.output.classesDirs.files.collect { classesDir ->
+            fileTree(classesDir) {
+                exclude coverageExcludes
+            }
+        }
+    })
+}
+
+task codeCoverageReport(type: JacocoReport, group: "verification", description: "Generate code coverage report") {
+    executionData fileTree(project.rootDir.absolutePath).include("**/build/reports/jacoco/*.exec", "**/coverage-artifacts/**/*.exec")
+
+    publishedProjects.each {
+        sourceSets it.sourceSets.main
+    }
+    classDirectories.setFrom(filteredCoverageClassDirectories)
+
+    reports {
+        xml.required = System.getenv("CIRCLECI") == "true"
+        csv.required = false
+        html.required = System.getenv("CIRCLECI") != "true"
+        xml.outputLocation = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+    }
+    dependsOn(subprojects*.test)
+    doLast {}
+    test.useTestNG()
+}
+
+tasks.register("coverageReportOnly", JacocoReport) {
+    group = "verification"
+    description = "Generate code coverage report from existing JaCoCo execution data."
+    executionData fileTree(project.rootDir.absolutePath).include("**/build/reports/jacoco/*.exec", "**/coverage-artifacts/**/*.exec")
+
+    publishedProjects.each {
+        sourceSets it.sourceSets.main
+    }
+    classDirectories.setFrom(filteredCoverageClassDirectories)
+
+    reports {
+        xml.required = true
+        csv.required = false
+        html.required = true
+        xml.outputLocation = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+    }
+}
+
+
+jacoco {
+    toolVersion = "${jacocoVersion}"
+}
+
+clean.doLast {
+    subprojects.findAll({ subproject ->
+        def _files = file(subproject.name + "/log").listFiles()
+        if (_files != null) {
+            delete _files
+        }
+    })
+}
+
+coverallsJacoco {
+    reportSourceSets = publishedProjects.collectMany {
+        it.sourceSets.main.allSource.srcDirs
+    }
+}
+
+def javaFormatSources = providers.provider {
+    files(subprojects.collect { subproject ->
+        subproject.fileTree(subproject.projectDir) {
+            include "src/**/*.java"
+        }
+    }).files.findAll { it.exists() }
+}
+
+tasks.register("formatJava", JavaExec) {
+    group = "formatting"
+    description = "Formats all Java sources with Palantir Java Format."
+    classpath = configurations.palantirJavaFormat
+    mainClass = "com.palantir.javaformat.java.Main"
+    jvmArgs(
+            "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED"
+    )
+    doFirst {
+        args = ["--replace"] + javaFormatSources.get().collect { it.absolutePath }
+    }
+}
+
+tasks.register("checkFormatJava", JavaExec) {
+    group = "verification"
+    description = "Checks whether all Java sources are formatted with Palantir Java Format."
+    classpath = configurations.palantirJavaFormat
+    mainClass = "com.palantir.javaformat.java.Main"
+    jvmArgs(
+            "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
+            "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED"
+    )
+    doFirst {
+        args = ["--dry-run", "--set-exit-if-changed"] + javaFormatSources.get().collect { it.absolutePath }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(tasks.named("checkFormatJava"))
+}

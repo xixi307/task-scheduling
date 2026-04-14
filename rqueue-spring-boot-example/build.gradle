@@ -1,0 +1,28 @@
+plugins {
+    id "org.springframework.boot" version "${springBootVersion}"
+    id "war"
+}
+
+// 确保使用 bootJar 任务构建可执行的 JAR 文件
+bootJar {
+    mainClass = "com.github.sonus21.rqueue.example.RQueueApplication"
+}
+
+dependencies {
+    implementation project(":rqueue-spring-boot-starter")
+    implementation "org.springframework.boot:spring-boot-starter-data-redis:${springBootVersion}"
+    implementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+    // https://mvnrepository.com/artifact/ch.qos.logback/logback-core
+    implementation "ch.qos.logback:logback-core:${logbackVersion}"
+    // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+    implementation "ch.qos.logback:logback-classic:${logbackVersion}"
+    implementation "io.lettuce:lettuce-core"
+    implementation "com.github.codemonstur:embedded-redis:${embeddedRedisVersion}"
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor:${springBootVersion}"
+    providedRuntime "org.springframework.boot:spring-boot-starter-tomcat:${springBootVersion}"
+}
+
+// Add JVM memory configuration
+bootRun {
+    jvmArgs = ['-Xmx256m', '-Xms128m', '-XX:MaxMetaspaceSize=64m', '-XX:+UseSerialGC']
+}
